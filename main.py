@@ -12,7 +12,7 @@ def create_argparser_and_get_args():
     parser.add_argument("--gen-dir", help="the directory that fast-html will output the modified files, path is relative to the fast-html directory")
     parser.add_argument("--base-template-file", help="the base template file to be used on all short-form html files by default")
     parser.add_argument("--config-file", help="a fast-html config file, can be used to store configuraiton to speed up usage.")
-    parser.add_argument("--custom-template-conversion-file", help="a python file which create a variable with the name 'template_file_to_conversion' which is a dictionary mapping the name of a template file to a function which replaces a short-form html file with a valid html file. Check the readme for a specific example of this.")
+    parser.add_argument("--custom-template-conversion-file", help="a python file which creates a variable with the name 'template_file_to_conversion' which is a dictionary mapping the name of a template file to a function which replaces a short-form html file with a valid html file. Check the readme for a specific example of this.")
 
     args = parser.parse_args()
     return args
@@ -146,9 +146,8 @@ def attempt_to_get_custom_conversion_module():
 
 if __name__ == "__main__":
     args = create_argparser_and_get_args()
-    
-    custom_conversion_module = attempt_to_get_custom_conversion_module()
 
+    custom_conversion_module = attempt_to_get_custom_conversion_module()
 
     if args.base_dir and args.gen_dir: # good this is valid
         base_template_file = args.base_template_file if args.base_template_file else "sample_template.html"
@@ -156,7 +155,7 @@ if __name__ == "__main__":
         convert_all_content_files_to_valid_html(args.gen_dir, base_template_file, custom_conversion_module);
     else:
         if args.config_file is None:
-            print("Error: You must specify base-dir, gen-dir and base-template-file. Alternatively you can specify this in a config.ini file")
+            print("Error: You must specify base-dir, gen-dir. Alternatively you can specify this in a config.ini file")
         else:
             print("using config file")
             config = get_config_object(args.config_file)
