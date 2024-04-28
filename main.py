@@ -38,18 +38,22 @@ def config_has_enough_info(config) -> bool:
         if 'gen-dir' not in config['paths']:
             print("you need to specify the gen-dir attribute in the config file")
             return False
+        if 'base-template-file' not in config['paths']:
+            print("you need to specify the gen-dir attribute in the config file")
+            return False
     return True
 
 
 def get_settings_from_config_file(config: configparser.ConfigParser):
     'precondition: config_has_enough_info(config) holds true'
-    assert(config_has_enough_info(config))
+    assert config_has_enough_info(config), "config file is missing some information"
 
     # Access the source and destination paths
     base_dir = config['paths']['base-dir']
     gen_dir = config['paths']['gen-dir']
+    base_template_file = config['paths']['base-template-file']
 
-    return base_dir, gen_dir
+    return base_dir, gen_dir, base_template_file
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 
@@ -59,7 +63,7 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 def get_end_of_path(path):
     return os.path.basename(os.path.normpath(path))
 
-def convert_content_to_valid_html(path_to_content_file: str, file_name: str):
+def convert_content_to_valid_html(path_to_content_file: str, file_name: str, template_file: str):
     """
     given a path to a content file it uses the template to create a valid html file
     this also changes the title to be the name of the file with underscores replaced by spaces
@@ -87,12 +91,12 @@ def convert_content_to_valid_html(path_to_content_file: str, file_name: str):
         contents = "".join(template_lines)
         f.write(contents)
 
-def re_create_genererated_directory(content_directory, generated_directory):
+def re_create_generated_directory(content_directory, generated_directory):
     if os.path.exists(generated_directory):
         shutil.rmtree(generated_directory)
     shutil.copytree(content_directory, generated_directory)
 
-def convert_all_content_files_to_valid_html(generated_directory: str):
+def convert_all_content_files_to_valid_html(generated_directory: str, base_template_file: str):
     for dir_path, dir_names, file_names in os.walk(generated_directory):
 
         directory_name = get_end_of_path(dir_path)
@@ -104,21 +108,21 @@ def convert_all_content_files_to_valid_html(generated_directory: str):
             is_html_file = file_name[-4:] == "html"
 
             if is_html_file:
-                convert_content_to_valid_html(full_path, file_name)
+                convert_content_to_valid_html(full_path, file_name, base_template_file)
                 print(file_name)
                 # html_files.append(relative_file_path)
 
 if __name__ == "__main__":
     args = create_argparser_and_get_args()
-    if args.base_dir and args.gen_dir: # good this is valid
-        re_create_genererated_directory(args.base_dir, args.gen_dir)
-        convert_all_content_files_to_valid_html(args.gen_dir);
+    if args.base_dir and args.gen_dir and args.base_template_file: # good this is valid
+        re_create_generated_directory(args.base_dir, args.gen_dir)
+        convert_all_content_files_to_valid_html(args.gen_dir, args.base_template_file);
     else:
         if args.config_file is None:
-            print("Error: You must specify both a base dir and a gen dir or a config file")
+            print("Error: You must specify base-dir, gen-dir and base-template-file. Alternatively you can specify this in a config.ini file")
         else:
             print("using config file")
             config = get_config_object(args.config_file)
-            base_dir, gen_dir = get_settings_from_config_file(config)
-            re_create_genererated_directory(base_dir, gen_dir)
-            convert_all_content_files_to_valid_html(gen_dir);
+            base_dir, gen_dir, base_template_file = get_settings_from_config_file(config)
+            re_create_generated_directory(base_dir, gen_dir)
+            convert_all_content_files_to_valid_html(gen_dir, base_template_file);
