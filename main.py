@@ -68,7 +68,7 @@ def convert_content_to_valid_html(path_to_content_file: str, file_name: str, tem
     given a path to a content file it uses the template to create a valid html file
     this also changes the title to be the name of the file with underscores replaced by spaces
     """
-    with open("../templates/toolbox_template.html", "r") as f:
+    with open(template_file, "r") as f:
         template_lines = f.readlines()
 
     title_line_index = next(i for i, s in enumerate(template_lines) if "<title>" in s)
@@ -76,7 +76,6 @@ def convert_content_to_valid_html(path_to_content_file: str, file_name: str, tem
     # [:-5] removes ".html"
     page_title = " ".join(file_name[:-5].split("_"))
 
-    print(template_lines[title_line_index])
     template_lines[title_line_index] = template_lines[title_line_index].replace("Page Title", page_title)
 
     # add + 2 because we want an extra line right after the body
@@ -101,16 +100,23 @@ def convert_all_content_files_to_valid_html(generated_directory: str, base_templ
 
         directory_name = get_end_of_path(dir_path)
         relative_directory_path = os.path.relpath(dir_path, script_directory)
-        print(directory_name, relative_directory_path)
+        print(f"\n==== starting work on {dir_path} ====")
+
+        at_least_one_html_file = False
 
         for file_name in file_names:
             full_path = os.path.join(dir_path, file_name)
             is_html_file = file_name[-4:] == "html"
 
             if is_html_file:
+                at_least_one_html_file = True
                 convert_content_to_valid_html(full_path, file_name, base_template_file)
-                print(file_name)
-                # html_files.append(relative_file_path)
+                print(f"~~~> converting {file_name} to valid html using {base_template_file}")
+
+        if not at_least_one_html_file:
+            print("No html files in here, nothing to do")
+
+        print(f"==== done with {dir_path} ====")
 
 if __name__ == "__main__":
     args = create_argparser_and_get_args()
