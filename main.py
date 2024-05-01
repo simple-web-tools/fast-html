@@ -26,7 +26,7 @@ def get_config_object(config_file_path: str) -> configparser.ConfigParser:
     assert(config_file_exists(config_file_path))
 
     config = configparser.ConfigParser()
-    config.read('config.ini')
+    config.read(config_file_path)
     return config
 
 def config_has_enough_info(config) -> bool:
