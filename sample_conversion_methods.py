@@ -19,6 +19,9 @@ def toolbox_template_conversion(path_to_content_file: str, file_name: str, templ
     main_content_area_index = next(i for i, s in enumerate(template_lines) if "CONTENT" in s)
     template_lines[main_content_area_index] = template_lines[main_content_area_index].replace("CONTENT", content_string)
 
+    link_to_file_on_git_index = next(i for i, s in enumerate(template_lines) if "FILENAME" in s)
+    template_lines[link_to_file_on_git_index] = template_lines[link_to_file_on_git_index].replace("FILENAME", file_name)
+
     with open(path_to_content_file, "w") as f:
         contents = "".join(template_lines)
         f.write(contents)
