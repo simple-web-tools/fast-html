@@ -1,6 +1,10 @@
 from typing import Dict, Callable
 
 def toolbox_template_conversion(path_to_content_file: str, file_name: str, template_file: str):
+    """
+    If it's processing a/b/c/file.html, then path_to_content_file refers to that whole path, and 
+    file_name refers to file.html, template file refers to the template file being used for file.html
+    """
     with open(template_file, "r") as f:
         template_lines = f.readlines()
 
@@ -20,7 +24,9 @@ def toolbox_template_conversion(path_to_content_file: str, file_name: str, templ
     template_lines[main_content_area_index] = template_lines[main_content_area_index].replace("CONTENT", content_string)
 
     link_to_file_on_git_index = next(i for i, s in enumerate(template_lines) if "FILENAME" in s)
-    template_lines[link_to_file_on_git_index] = template_lines[link_to_file_on_git_index].replace("FILENAME", file_name)
+    # because we do this on a different directory we remove the temporary directory from path
+    corrected_path = path_to_content_file.replace("generated_html/", "")
+    template_lines[link_to_file_on_git_index] = template_lines[link_to_file_on_git_index].replace("FILENAME", corrected_path);
 
     with open(path_to_content_file, "w") as f:
         contents = "".join(template_lines)
