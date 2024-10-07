@@ -1,3 +1,4 @@
 config.ini
 generated_html
 __pycache__
+.base_dir_last_modified.json

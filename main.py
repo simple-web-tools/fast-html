@@ -1,9 +1,11 @@
 import os
+import time
 import shutil
 import argparse 
 import configparser
 import importlib.util
 import sys
+from typing import List
 
 def create_argparser_and_get_args():
     parser = argparse.ArgumentParser(prog="fast-html", description="Create html content fast. Note that this program will not overwrite your files, it simply generates valid html from short form html", epilog="visit www.cuppajoeman.com for more information")
@@ -13,6 +15,7 @@ def create_argparser_and_get_args():
     parser.add_argument("--base-template-file", help="the base template file to be used on all short-form html files by default")
     parser.add_argument("--config-file", help="a fast-html config file, can be used to store configuraiton to speed up usage.")
     parser.add_argument("--custom-template-conversion-file", help="a python file which creates a variable with the name 'template_file_to_conversion' which is a dictionary mapping the name of a template file to a function which replaces a short-form html file with a valid html file. Check the readme for a specific example of this.")
+    parser.add_argument('-d', '--devel', action='store_true', help="developer mode where only the changed files are built again")
 
     args = parser.parse_args()
     return args
@@ -98,6 +101,40 @@ def re_create_generated_directory(content_directory, generated_directory):
         shutil.rmtree(generated_directory)
     shutil.copytree(content_directory, generated_directory)
 
+def get_relative_file_path(directory, full_file_path):
+    relative_path = os.path.relpath(full_file_path, directory)
+    return relative_path
+
+def copy_specific_files_to_the_generated_directory(content_directory_file_paths, content_directory, generated_directory):
+    # Ensure the generated directory exists, or create it
+    if not os.path.exists(generated_directory):
+        os.makedirs(generated_directory)
+
+    copied_files = []  # List to store paths of copied files
+
+    # Loop through the collection of selected files
+    for file_path in content_directory_file_paths:
+        src_path = file_path
+        relative_file_path = get_relative_file_path(content_directory, file_path)
+        print(f"relpath = {relative_file_path}")
+        dest_path = os.path.join(generated_directory, relative_file_path)
+        print(f"destpath = {dest_path}")
+
+
+        # Ensure the destination directory for the file exists
+        dest_dir = os.path.dirname(dest_path)
+        if not os.path.exists(dest_dir):
+            os.makedirs(dest_dir)
+
+        # Copy the file, overwriting any existing file
+        if os.path.exists(src_path):
+            shutil.copy2(src_path, dest_path)
+            copied_files.append(dest_path)  # Add the copied file to the list
+        else:
+            print(f"File not found: {src_path}")
+
+    return copied_files  # Return the list of copied file paths
+
 def convert_all_content_files_to_valid_html(generated_directory: str, base_template_file: str, custom_conversion_module = None):
     for dir_path, dir_names, file_names in os.walk(generated_directory):
 
@@ -120,6 +157,17 @@ def convert_all_content_files_to_valid_html(generated_directory: str, base_templ
             print("No html files in here, nothing to do")
 
         print(f"==== done with {dir_path} ====")
+
+def convert_specific_content_files_to_valid_html(files_to_convert: List[str], base_template_file: str, custom_conversion_module = None):
+    for file_name in files_to_convert:
+        # TODO this is probably bad
+        full_path = file_name
+        is_html_file = file_name[-4:] == "html"
+
+        if is_html_file:
+            convert_content_to_valid_html(full_path, file_name, base_template_file, custom_conversion_module)
+            print(f"~~~> converting {file_name} to valid html using {base_template_file}")
+
 
 def attempt_to_get_custom_conversion_module():
     custom_conversion_module = None
@@ -144,6 +192,57 @@ def attempt_to_get_custom_conversion_module():
 
     return custom_conversion_module
 
+import json
+
+BASE_DIR_LAST_MOD_FILE = ".base_dir_last_modified.json"
+
+# Function to get the modification times of all files in a directory
+def get_modification_times(directory):
+    mod_times = {}
+    for root, _, files in os.walk(directory):
+        for filename in files:
+            filepath = os.path.join(root, filename)
+            mod_times[filepath] = os.path.getmtime(filepath)
+    return mod_times
+
+def load_last_mod_times():
+    """Load the stored modification times from the last run"""
+    if os.path.exists(BASE_DIR_LAST_MOD_FILE):
+        with open(BASE_DIR_LAST_MOD_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_mod_times(mod_times):
+    """Save the current modification times for future comparison"""
+    with open(BASE_DIR_LAST_MOD_FILE, "w") as f:
+        json.dump(mod_times, f)
+
+def find_modified_files(last_mod_times, current_mod_times) -> List[str]:
+    """Compare the last known modification times with the current ones"""
+    modified_files = []
+    for filepath, current_time in current_mod_times.items():
+        last_time = last_mod_times.get(filepath)
+        # File is modified if it's new or has a different modification time
+        if last_time is None or current_time > last_time:
+            modified_files.append(filepath)
+    return modified_files
+
+def save_mod_times_for_base_dir(base_dir: str):
+    last_mod_times = load_last_mod_times()
+    current_mod_times = get_modification_times(base_dir)
+
+    modified_files = find_modified_files(last_mod_times, current_mod_times)
+
+    if modified_files:
+        print("Modified files since last check:")
+        for file in modified_files:
+            print(file)
+    else:
+        print("No files have been modified since last check.")
+
+    # Save the current modification times for the next run
+    save_mod_times(current_mod_times)
+
 if __name__ == "__main__":
     args = create_argparser_and_get_args()
 
@@ -151,8 +250,36 @@ if __name__ == "__main__":
 
     if args.base_dir and args.gen_dir: # good this is valid
         base_template_file = args.base_template_file if args.base_template_file else "sample_template.html"
-        re_create_generated_directory(args.base_dir, args.gen_dir)
-        convert_all_content_files_to_valid_html(args.gen_dir, base_template_file, custom_conversion_module);
+        if args.devel:
+            if not os.path.isdir(args.gen_dir):
+                print("Error: gen dir doesn't exist, first run the program in non devel mode first")
+            else:
+                rate_to_check_for_changes_seconds = 5
+                while True:
+                    base_dir_last_modified_times = load_last_mod_times()
+                    base_dir_current_modified_times = get_modification_times(args.base_dir)
+                    modified_files = find_modified_files(base_dir_last_modified_times, base_dir_current_modified_times)
+
+                    if modified_files:
+                        print("Modified files since last check:")
+                        for file in modified_files:
+                            print(file)
+                        print("Now converting")
+                        # TODO don't use modified files we need it in the gneerated directory.
+                        copied_files = copy_specific_files_to_the_generated_directory(modified_files, args.base_dir, args.gen_dir)
+                        print(f"copied files {copied_files}")
+                        convert_specific_content_files_to_valid_html(copied_files, base_template_file, custom_conversion_module)
+                        save_mod_times_for_base_dir(args.base_dir)
+                    else:
+                        print("No files have been modified since last check.")
+                    time.sleep(5)
+
+
+        else:
+            re_create_generated_directory(args.base_dir, args.gen_dir)
+            convert_all_content_files_to_valid_html(args.gen_dir, base_template_file, custom_conversion_module);
+            save_mod_times_for_base_dir(args.base_dir)
+
     else:
         if args.config_file is None:
             print("Error: You must specify base-dir, gen-dir. Alternatively you can specify this in a config.ini file")
@@ -166,5 +293,9 @@ if __name__ == "__main__":
             else:
                 base_template_file = "sample_template.html"
 
+            if args.devel:
+                print("not yet implemented")
+
             re_create_generated_directory(base_dir, gen_dir)
             convert_all_content_files_to_valid_html(gen_dir, base_template_file, custom_conversion_module);
+            save_mod_times_for_base_dir(args.base_dir)
