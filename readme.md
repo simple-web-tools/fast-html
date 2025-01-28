@@ -1,5 +1,9 @@
 # fast html
 
+Most templating language are almost easy enough for non-programmers to use. I go against that here, this is for programmers who want the power of a real programming language to do templating.
+
+## what you can do
+
 Simply create html files without caring about any of the required tags to be valid html:
 
 `content/banana_file.html`
@@ -86,43 +90,100 @@ That function above (which is predefined in `sample_conversion_methods.py`) conv
 
 Once you've created your custom implementation you can specify that this template be used through the command line option `--custom-template-conversion-file` or you can also specify it through the config file.
 
-## example
+## tutorial
 
-Here is an example configuration for one of my projects which you can use to write your own:
+### write the basic html template you want on all your html files
+Add in any links to css or javascript you want to use, also throw in some placeholder strings you can easily grab onto later
 
-`template_conversion.py`
+`html/my_custom_template.html`
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TITLE</title>
+    <link rel="stylesheet" href="/cjm-css/styles.css">
+</head>
+<body>
+    <div class="wrapper">
+        BODY
+    </div>
+</body>
+</html>
+```
+
+### write your conversion code
+
+This is what makes fast-html so good, you simply now get to write the template conversion code in python, meaning that you pretty much have no restrictions as to what you have to do next, you can generate dynamic content, make network requests, etc...
+
+Next create a python file that does the conversion, adhereing to the following signature and constructing the dictionary at the bottom like so:
+`html/custom_template_conversion.py`
 ```py
+import os
 from typing import Dict, Callable
 
-def openmath_template_conversion(path_to_content_file: str, file_name: str, template_file: str):
+def custom_template_conversion(path_to_content_file: str, file_name: str, template_file: str):
     """
-    If it's processing a/b/c/file.html, then path_to_content_file refers to that whole path, and 
-    file_name refers to file.html, template_file refers to the template file being used for file.html
+    First your regular html directory is copied to a different directory, then for each file in the
+    new directory, this function gets called on each triple of the form:
+        (path_to_content_file, file_name, template_file)
+
+    For example, it could look like:
+        (generated_html/mystuff.html, mystuff.html, my_custom_template.html)
+
+    Notes:
+    - you can configure fast-html to use different templates for different directories or files.
+    - since this function is being called over all files in a new fresh copied directory so the paths
+    given will be within this copied directory, and over-writing on the file path `path_to_content_file` is
+    a safe operation
     """
+    # open the template
     with open(template_file, "r") as f:
         template_lines = f.readlines()
 
+    # generate a page title
     file_name = os.path.splitext(os.path.basename(file_name))[0]
     page_title = file_name.replace('_', ' ')
 
-    title_line_index = next(i for i, s in enumerate(template_lines) if "<title>PAGE TITLE</title>" in s)
-    template_lines[title_line_index] = template_lines[title_line_index].replace("PAGE TITLE", page_title)
+    # replace the title with the generated title
+    title_line_index = next(i for i, s in enumerate(template_lines) if "<title>TITLE</title>" in s)
+    template_lines[title_line_index] = template_lines[title_line_index].replace("TITLE", page_title)
 
+    # open the file with the actual content in it
     with open(path_to_content_file, "r") as f:
             content_string = f.read()
 
-    main_content_area_index = next(i for i, s in enumerate(template_lines) if "CONTENT" in s)
-    template_lines[main_content_area_index] = breadcrumb_html + template_lines[main_content_area_index].replace("CONTENT", content_string)
+    # replace the body in the template with the body in the content file
+    main_content_area_index = next(i for i, s in enumerate(template_lines) if "BODY" in s)
+    template_lines[main_content_area_index] = template_lines[main_content_area_index].replace("BODY", content_string)
 
     with open(path_to_content_file, "w") as f:
         contents = "".join(template_lines)
-        contents = setup_page(contents)
         f.write(contents)
 
-
 template_file_to_conversion : Dict[str, Callable[[str, str, str], None]] = {
-    "openmath_template.html": openmath_template_conversion
+    "my_custom_template.html": cpptbx_template_conversion
 }
 ```
+then I run
 
-then I run `fast-html/main.py --custom-template-conversion-file template_conversion.py --base-template-file templates/openmath_template.html `
+```sh
+python scripts/fast-html/main.py -custom-template-conversion-file html/custom_template_conversion.py --base-template-file html/my_custom_template.html --base-dir html/ --gen-dir generated_html
+```
+
+### going faster
+The first step to going faster is to make a config file storing your commands in a config file:
+`html/fast_html_config.txt`
+```ini
+[settings]
+custom-template-conversion-file = html/fast_html_template_conversion.py
+base-template-file = html/cpp_tbx_template.html
+base-dir = html/
+gen-dir = generated_html
+```
+and then just run: 
+```sh
+python scripts/fast-html/main.py --config-file html/fast_html_config.txt
+```
+You'll probably have noticed that running that command everytime you change stuff can become a pain, so be sure to turn on `devel` mode.
