@@ -169,18 +169,8 @@ def convert_specific_content_files_to_valid_html(files_to_convert: List[str], ba
             print(f"~~~> converting {file_name} to valid html using {base_template_file}")
 
 
-def attempt_to_get_custom_conversion_module():
+def attempt_to_get_custom_conversion_module(custom_template_conversion_file: str):
     custom_conversion_module = None
-
-    custom_template_conversion_file = None
-    if args.custom_template_conversion_file:
-        custom_template_conversion_file = args.custom_template_conversion_file
-    else:
-        if args.config_file is not None:
-            config = get_config_object(args.config_file)
-            if config.has_option("paths", "custom-template-conversion-file"):
-                custom_template_conversion_file = config["paths"]["custom-template-conversion-file"]
-
     if custom_template_conversion_file is not None:
         module_name = "custom_conversion_module"
         spec = importlib.util.spec_from_file_location(module_name, custom_template_conversion_file)
@@ -243,59 +233,66 @@ def save_mod_times_for_base_dir(base_dir: str):
     # Save the current modification times for the next run
     save_mod_times(current_mod_times)
 
-if __name__ == "__main__":
+def main():
     args = create_argparser_and_get_args()
 
-    custom_conversion_module = attempt_to_get_custom_conversion_module()
-
-    if args.base_dir and args.gen_dir: # good this is valid
-        base_template_file = args.base_template_file if args.base_template_file else "sample_template.html"
-        if args.devel:
-            if not os.path.isdir(args.gen_dir):
-                print("Error: gen dir doesn't exist, first run the program in non devel mode first")
-            else:
-                rate_to_check_for_changes_seconds = 1
-                while True:
-                    base_dir_last_modified_times = load_last_mod_times()
-                    base_dir_current_modified_times = get_modification_times(args.base_dir)
-                    modified_files = find_modified_files(base_dir_last_modified_times, base_dir_current_modified_times)
-
-                    if modified_files:
-                        print("Modified files since last check:")
-                        for file in modified_files:
-                            print(file)
-                        print("Now converting")
-                        # TODO don't use modified files we need it in the gneerated directory.
-                        copied_files = copy_specific_files_to_the_generated_directory(modified_files, args.base_dir, args.gen_dir)
-                        print(f"copied files {copied_files}")
-                        convert_specific_content_files_to_valid_html(copied_files, base_template_file, custom_conversion_module)
-                        save_mod_times_for_base_dir(args.base_dir)
-                    else:
-                        print("No files have been modified since last check.")
-                    time.sleep(rate_to_check_for_changes_seconds)
-
-
-        else:
-            re_create_generated_directory(args.base_dir, args.gen_dir)
-            convert_all_content_files_to_valid_html(args.gen_dir, base_template_file, custom_conversion_module);
-            save_mod_times_for_base_dir(args.base_dir)
-
-    else:
-        if args.config_file is None:
-            print("Error: You must specify base-dir, gen-dir. Alternatively you can specify this in a config.ini file")
-        else:
-            print("using config file")
+    if args.config_file:
+        try:
             config = get_config_object(args.config_file)
-            base_dir, gen_dir = get_required_options_from_config_file(config)
+        except FileNotFoundError as e:
+            print(f"Error: {e}")
+            return
 
-            if config.has_option("paths", "base-template-file"):
-                base_template_file = config["paths"]["base-template-file"]
-            else:
-                base_template_file = "sample_template.html"
+        base_dir = config["settings"].get("base-dir")
+        gen_dir = config["settings"].get("gen-dir")
+        base_template_file = config["settings"].get("base-template-file")
+        devel = config["settings"].get("devel")
+        custom_template_conversion_file = config["settings"].get("custom-template-conversion-file")
+    else:
+        base_dir = args.base_dir
+        gen_dir = args.gen_dir
+        base_template_file = args.base_template_file
+        devel = args.devel
+        custom_template_conversion_file = args.custom_template_conversion_file 
 
-            if args.devel:
-                print("not yet implemented")
+    custom_conversion_module = attempt_to_get_custom_conversion_module(custom_template_conversion_file)
 
-            re_create_generated_directory(base_dir, gen_dir)
-            convert_all_content_files_to_valid_html(gen_dir, base_template_file, custom_conversion_module);
-            save_mod_times_for_base_dir(args.base_dir)
+    if not base_dir or not gen_dir or not base_template_file:
+        print("Error: Missing required configuration (base-dir, gen-dir, base-template-file).")
+        return
+
+    if not devel:
+        re_create_generated_directory(base_dir, gen_dir)
+        convert_all_content_files_to_valid_html(gen_dir, base_template_file, custom_conversion_module);
+        save_mod_times_for_base_dir(base_dir)
+        return
+
+    # so we are running in devel mode now
+    base_template_file = base_template_file if base_template_file else "sample_template.html"
+    if not os.path.isdir(gen_dir):
+        print("Error: gen dir doesn't exist, first run the program in non devel mode first")
+        return;
+
+    # run continuous checking mode
+    rate_to_check_for_changes_seconds = 1
+    while True:
+        base_dir_last_modified_times = load_last_mod_times()
+        base_dir_current_modified_times = get_modification_times(base_dir)
+        modified_files = find_modified_files(base_dir_last_modified_times, base_dir_current_modified_times)
+
+        if modified_files:
+            print("Modified files since last check:")
+            for file in modified_files:
+                print(file)
+            print("Now converting")
+            # TODO don't use modified files we need it in the gneerated directory.
+            copied_files = copy_specific_files_to_the_generated_directory(modified_files, base_dir, gen_dir)
+            print(f"copied files {copied_files}")
+            convert_specific_content_files_to_valid_html(copied_files, base_template_file, custom_conversion_module)
+            save_mod_times_for_base_dir(base_dir)
+        else:
+            print("No files have been modified since last check.")
+        time.sleep(rate_to_check_for_changes_seconds)
+
+if __name__ == "__main__":
+    main()
