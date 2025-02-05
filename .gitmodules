@@ -1,0 +1,3 @@
+[submodule "fs_utils"]
+	path = fs_utils
+	url = git@github.com:py-garden/fs_utils.git
