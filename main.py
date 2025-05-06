@@ -223,8 +223,9 @@ def main():
     # so we are running in devel mode now
     base_template_file = base_template_file if base_template_file else "sample_template.html"
     if not os.path.isdir(gen_dir):
-        print("Error: gen dir doesn't exist, first run the program in non devel mode first")
-        return;
+        re_create_generated_directory(base_dir, gen_dir)
+        convert_all_content_files_to_valid_html(gen_dir, base_template_file, custom_conversion_module);
+        save_mod_times_for_base_dir(base_dir)
 
     # run continuous checking mode
     rate_to_check_for_changes_seconds = 1
