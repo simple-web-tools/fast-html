@@ -66,9 +66,8 @@ def toolbox_template_conversion(path_to_content_file: str, file_name: str, templ
 
     link_to_file_on_git_index = next(i for i, s in enumerate(template_lines) if "FILENAME" in s)
     # because we do this on a different directory we remove the temporary directory from path
-    corrected_path = path_to_content_file.replace("generated_html/", "")
-    norm_path = os.path.normpath(corrected_path)
-    template_lines[link_to_file_on_git_index] = template_lines[link_to_file_on_git_index].replace("FILENAME", norm_path)
+    rel_path = path_to_content_file.split("generated_html" + os.sep, 1)[1]
+    template_lines[link_to_file_on_git_index] = template_lines[link_to_file_on_git_index].replace("FILENAME", rel_path)
 
     with open(path_to_content_file, "w") as f:
         contents = "".join(template_lines)
