@@ -1,22 +1,37 @@
 from typing import Dict, Callable
 import os
 
+
 def generate_breadcrumb(path_to_content_file: str) -> str:
     """
     Generates breadcrumb navigation from the file path.
     Example: path_to_content_file 'generated_html/a/b/c/file.html'
     would generate the breadcrumb as:
-    '~/a/b/c/' where a, b, c are clickable and link to /a/index.html, /a/b/index.html, etc.
+    '~/a/b/c/file.html' where each part is clickable and links to its index.html
+    or the actual file for the last part.
     """
+    # Normalize the path to handle '..' and redundant slashes
+    norm_path = os.path.normpath(path_to_content_file)
+
+    # Ensure 'generated_html' is in the path and strip everything before it
+    try:
+        rel_path = norm_path.split("generated_html" + os.sep, 1)[1]
+    except IndexError:
+        raise ValueError("Path must contain 'generated_html'.")
+
+    parts = rel_path.split(os.sep)
     breadcrumb_html = '<nav class="breadcrumb">\n'
-    parts = path_to_content_file.replace("generated_html/", "").split("/")[:-1]  # exclude the file name
-    current_path = "/"
-    
     breadcrumb_html += f'<a href="/index.html">~</a>'
 
-    for i, part in enumerate(parts):
+    current_path = "/"
+    for part in parts[:-1]:  # all except the last (file)
         current_path += part + "/"
         breadcrumb_html += f'/<a href="{current_path}index.html">{part}</a>'
+
+    # Add the final part (the file itself)
+    final_file = parts[-1]
+    file_path = current_path + final_file
+    breadcrumb_html += f'/<a href="{file_path}">{final_file}</a>'
 
     breadcrumb_html += "\n</nav>\n"
     return breadcrumb_html
