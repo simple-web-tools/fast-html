@@ -136,7 +136,13 @@ def copy_specific_files_to_the_generated_directory(content_directory_file_paths,
 
     return copied_files  # Return the list of copied file paths
 
-def convert_all_content_files_to_valid_html(generated_directory: str, base_template_file: str, custom_conversion_module = None):
+def get_ignored_files_from_config(config: configparser.ConfigParser):
+    if config.has_option("paths", "ignore-files"):
+        raw_list = config["paths"]["ignore-files"]
+        return [f.strip() for f in raw_list.split(",") if f.strip()]
+    return []
+
+def convert_all_content_files_to_valid_html(generated_directory: str, base_template_file: str, custom_conversion_module = None, ignored_files = None):
     for dir_path, dir_names, file_names in os.walk(generated_directory):
 
         # directory_name = get_end_of_path(dir_path)
@@ -147,12 +153,20 @@ def convert_all_content_files_to_valid_html(generated_directory: str, base_templ
 
         for file_name in file_names:
             full_path = os.path.join(dir_path, file_name)
-            is_html_file = file_name[-4:] == "html"
 
+            # Normalize the full path for comparison
+            normalized_full_path = os.path.normpath(full_path)
+
+            # Check if this file should be ignored
+            if any(normalized_full_path.endswith(os.path.normpath(ignore)) for ignore in ignored_files):
+                print(f"~~~> skipping {file_name} (matched ignore path)")
+                continue
+
+            is_html_file = file_name.endswith(".html")
             if is_html_file:
                 at_least_one_html_file = True
                 convert_content_to_valid_html(full_path, file_name, base_template_file, custom_conversion_module)
-                print(f"~~~> converting {file_name} to valid html using {base_template_file}")
+                print(f"~~~> converting {file_name} to valid html using {base_template_file}")        
 
         if not at_least_one_html_file:
             print("No html files in here, nothing to do")
@@ -201,12 +215,14 @@ def main():
         base_template_file = config["settings"].get("base-template-file")
         devel = config["settings"].get("devel")
         custom_template_conversion_file = config["settings"].get("custom-template-conversion-file")
+        ignored_files = get_ignored_files_from_config(config)
     else:
         base_dir = args.base_dir
         gen_dir = args.gen_dir
         base_template_file = args.base_template_file
         devel = args.devel
         custom_template_conversion_file = args.custom_template_conversion_file 
+        ignored_files = [] # TODO: in the future might want to add cmd line support for this 
 
     custom_conversion_module = attempt_to_get_custom_conversion_module(custom_template_conversion_file)
 
@@ -216,7 +232,7 @@ def main():
 
     if not devel:
         re_create_generated_directory(base_dir, gen_dir)
-        convert_all_content_files_to_valid_html(gen_dir, base_template_file, custom_conversion_module);
+        convert_all_content_files_to_valid_html(gen_dir, base_template_file, custom_conversion_module,  ignored_files);
         save_mod_times_for_base_dir(base_dir)
         return
 
@@ -224,7 +240,7 @@ def main():
     base_template_file = base_template_file if base_template_file else "sample_template.html"
     if not os.path.isdir(gen_dir):
         re_create_generated_directory(base_dir, gen_dir)
-        convert_all_content_files_to_valid_html(gen_dir, base_template_file, custom_conversion_module);
+        convert_all_content_files_to_valid_html(gen_dir, base_template_file, custom_conversion_module, ignored_files);
         save_mod_times_for_base_dir(base_dir)
 
     # run continuous checking mode
