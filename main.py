@@ -137,8 +137,8 @@ def copy_specific_files_to_the_generated_directory(content_directory_file_paths,
     return copied_files  # Return the list of copied file paths
 
 def get_ignored_files_from_config(config: configparser.ConfigParser):
-    if config.has_option("paths", "ignore-files"):
-        raw_list = config["paths"]["ignore-files"]
+    if config.has_option("settings", "ignore-files"):
+        raw_list = config["settings"]["ignore-files"]
         return [f.strip() for f in raw_list.split(",") if f.strip()]
     return []
 
