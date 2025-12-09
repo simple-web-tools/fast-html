@@ -90,6 +90,12 @@ That function above (which is predefined in `sample_conversion_methods.py`) conv
 
 Once you've created your custom implementation you can specify that this template be used through the command line option `--custom-template-conversion-file` or you can also specify it through the config file.
 
+When creating your own conversion logic I recommend first just grabbing the existing sample logic and then modifying that: 
+```bash
+cp fast-html/header_and_link_to_edit_template.html cpp_manual_template.html
+cp fast-html/sample_conversion_methods.py cpp_manual_template_conversion_logic.py
+``` 
+
 ## tutorial
 
 ### write the basic html template you want on all your html files
