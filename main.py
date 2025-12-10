@@ -271,27 +271,35 @@ def attempt_to_get_custom_conversion_module(custom_template_conversion_file: str
 
 from pathlib import Path
 
+import re
 
-def escape_html_in_directory(directory_path: str) -> None:
+
+def escape_code_blocks_in_directory(directory_path: str) -> None:
     """
-    Recursively escapes HTML characters in all .html files under the given directory.
+    Recursively escapes HTML characters inside <code>...</code> blocks
+    in all .html files under the given directory.
 
     Args:
         directory_path (str): Path to the directory to process.
     """
     directory = Path(directory_path)
 
+    # regex to match <code>...</code> blocks, non-greedy
+    code_block_re = re.compile(r"(<code.*?>)(.*?)(</code>)", re.DOTALL)
+
     for html_file in directory.rglob("*.html"):
-        # Read the original content
         with open(html_file, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Escape the content
-        escaped_content = escape_html(content)
+        def replacer(match):
+            start_tag, code_content, end_tag = match.groups()
+            return f"{start_tag}{escape_html(code_content)}{end_tag}"
 
-        # Write back to the same file
+        new_content = code_block_re.sub(replacer, content)
+
         with open(html_file, "w", encoding="utf-8") as f:
-            f.write(escaped_content)
+            f.write(new_content)
+
         print(f"Processed {html_file}")
 
 
@@ -338,7 +346,7 @@ def main():
         convert_all_content_files_to_valid_html(
             gen_dir, base_template_file, custom_conversion_module, ignored_files
         )
-        escape_html_in_directory(gen_dir)
+        escape_code_blocks_in_directory(gen_dir)
         save_mod_times_for_base_dir(base_dir)
         return
 
@@ -351,7 +359,7 @@ def main():
         convert_all_content_files_to_valid_html(
             gen_dir, base_template_file, custom_conversion_module, ignored_files
         )
-        escape_html_in_directory(gen_dir)
+        escape_code_blocks_in_directory(gen_dir)
         save_mod_times_for_base_dir(base_dir)
 
     # run continuous checking mode
