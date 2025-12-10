@@ -9,25 +9,6 @@ from typing import List
 from fs_utils.directory_modifiction_callback_system import *
 from html_utils.main import *
 
-import re
-
-
-def escape_code_blocks(html_content: str) -> str:
-    """
-    Escapes special HTML characters inside <code>...</code> blocks.
-    The rest of the HTML is preserved.
-    """
-
-    def escape_match(match: re.Match) -> str:
-        inner = match.group(1)
-        escaped_inner = escape_html(inner)
-        return f"<code>{escaped_inner}</code>"
-
-    # regex to match <code>...</code> including multiline content
-    code_re = re.compile(r"<code>(.*?)</code>", re.DOTALL)
-
-    return code_re.sub(escape_match, html_content)
-
 
 def create_argparser_and_get_args():
     parser = argparse.ArgumentParser(
@@ -158,7 +139,7 @@ def convert_content_to_valid_html(
 
         with open(path_to_content_file, "w") as f:
             contents = "".join(template_lines)
-            f.write(escape_code_blocks(contents))
+            f.write(contents)
 
 
 def re_create_generated_directory(content_directory, generated_directory):
@@ -288,7 +269,30 @@ def attempt_to_get_custom_conversion_module(custom_template_conversion_file: str
     return custom_conversion_module
 
 
-import json
+from pathlib import Path
+
+
+def escape_html_in_directory(directory_path: str) -> None:
+    """
+    Recursively escapes HTML characters in all .html files under the given directory.
+
+    Args:
+        directory_path (str): Path to the directory to process.
+    """
+    directory = Path(directory_path)
+
+    for html_file in directory.rglob("*.html"):
+        # Read the original content
+        with open(html_file, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Escape the content
+        escaped_content = escape_html(content)
+
+        # Write back to the same file
+        with open(html_file, "w", encoding="utf-8") as f:
+            f.write(escaped_content)
+        print(f"Processed {html_file}")
 
 
 def main():
@@ -334,6 +338,7 @@ def main():
         convert_all_content_files_to_valid_html(
             gen_dir, base_template_file, custom_conversion_module, ignored_files
         )
+        escape_html_in_directory(gen_dir)
         save_mod_times_for_base_dir(base_dir)
         return
 
@@ -346,6 +351,7 @@ def main():
         convert_all_content_files_to_valid_html(
             gen_dir, base_template_file, custom_conversion_module, ignored_files
         )
+        escape_html_in_directory(gen_dir)
         save_mod_times_for_base_dir(base_dir)
 
     # run continuous checking mode
