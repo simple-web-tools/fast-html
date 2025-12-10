@@ -291,11 +291,7 @@ def escape_code_blocks_in_directory(directory_path: str) -> None:
         with open(html_file, "r", encoding="utf-8") as f:
             content = f.read()
 
-        def replacer(match):
-            start_tag, code_content, end_tag = match.groups()
-            return f"{start_tag}{escape_html(code_content)}{end_tag}"
-
-        new_content = code_block_re.sub(replacer, content)
+        new_content = escape_code_tags(content)
 
         with open(html_file, "w", encoding="utf-8") as f:
             f.write(new_content)
