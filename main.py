@@ -9,9 +9,7 @@ from typing import List
 from fs_utils.directory_modifiction_callback_system import *
 from html_utils.main import *
 
-
 import re
-import html
 
 
 def escape_code_blocks(html_content: str) -> str:
@@ -22,7 +20,7 @@ def escape_code_blocks(html_content: str) -> str:
 
     def escape_match(match: re.Match) -> str:
         inner = match.group(1)
-        escaped_inner = html.escape(inner)
+        escaped_inner = escape_html(inner)
         return f"<code>{escaped_inner}</code>"
 
     # regex to match <code>...</code> including multiline content
