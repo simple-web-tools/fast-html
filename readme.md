@@ -59,6 +59,10 @@ The way we get this done is by taking the short-form html file and a template, f
 
 there is then a function which takes takes in the fast html file and the template as strings and then combines the two of them, the script will walk the entire directory doing this whenever it finds an html file.
 
+### code blocks are automatically escaped.
+Another painful thing when writing html is that when you have a code block, you have to escape thngs like <, >, & because they are special characters as well. fast-html will automatically do this for you.
+
+
 # config file
 
 As seen you have to specify your base dir and generated dir each time you run the program, so to make this easier you can put this information in a config file. Do it like this:

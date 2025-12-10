@@ -1,3 +1,6 @@
 [submodule "fs_utils"]
 	path = fs_utils
 	url = git@github.com:py-garden/fs_utils.git
+[submodule "html_utils"]
+	path = html_utils
+	url = git@github.com:py-garden/html_utils.git

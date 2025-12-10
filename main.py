@@ -7,6 +7,28 @@ import importlib.util
 import sys
 from typing import List
 from fs_utils.directory_modifiction_callback_system import *
+from html_utils.main import *
+
+
+import re
+import html
+
+
+def escape_code_blocks(html_content: str) -> str:
+    """
+    Escapes special HTML characters inside <code>...</code> blocks.
+    The rest of the HTML is preserved.
+    """
+
+    def escape_match(match: re.Match) -> str:
+        inner = match.group(1)
+        escaped_inner = html.escape(inner)
+        return f"<code>{escaped_inner}</code>"
+
+    # regex to match <code>...</code> including multiline content
+    code_re = re.compile(r"<code>(.*?)</code>", re.DOTALL)
+
+    return code_re.sub(escape_match, html_content)
 
 
 def create_argparser_and_get_args():
@@ -138,7 +160,7 @@ def convert_content_to_valid_html(
 
         with open(path_to_content_file, "w") as f:
             contents = "".join(template_lines)
-            f.write(contents)
+            f.write(escape_code_blocks(contents))
 
 
 def re_create_generated_directory(content_directory, generated_directory):
